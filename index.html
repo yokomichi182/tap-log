@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1f6feb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>タップ記録</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2230; --line:#2b3440;
+    --txt:#e6edf3; --muted:#8b949e; --accent:#1f6feb; --accent2:#2ea043;
+    --warn:#9e6a03; --danger:#da3633; --chip:#30363d;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;}
+  body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+  .wrap{max-width:560px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+
+  header{position:sticky; top:0; z-index:5; background:var(--bg); padding:10px 12px 8px; border-bottom:1px solid var(--line);}
+  .datebar{display:flex; align-items:center; gap:8px;}
+  .datebar .nav{flex:0 0 auto; width:44px; height:44px; border-radius:12px; border:1px solid var(--line);
+    background:var(--panel); color:var(--txt); font-size:22px; line-height:1;}
+  .datebar .dlabel{flex:1; text-align:center; font-size:16px; font-weight:600;}
+  .datebar .dlabel small{display:block; color:var(--muted); font-weight:400; font-size:12px; margin-top:2px;}
+  .todaybtn{margin-top:8px; width:100%; height:34px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel); color:var(--muted); font-size:13px;}
+
+  .buttons{padding:12px; display:flex; flex-direction:column; gap:10px;}
+  .bigbtn{height:84px; border:none; border-radius:18px; color:#fff; font-size:30px; font-weight:800;
+    letter-spacing:2px; box-shadow:0 4px 14px rgba(0,0,0,.35); transition:transform .05s ease, filter .1s;}
+  .bigbtn:active{transform:scale(.97); filter:brightness(1.1);}
+  .bigbtn.rec{background:linear-gradient(135deg,#1f6feb,#388bfd);}
+  .subrow{display:flex; gap:10px;}
+  .subrow .bigbtn{flex:1; height:58px; font-size:20px; letter-spacing:1px;}
+  .bigbtn.wait{background:linear-gradient(135deg,#9e6a03,#bb8009);}
+  .bigbtn.lunch{background:linear-gradient(135deg,#6e40c9,#8957e5);}
+
+  .listhead{display:flex; justify-content:space-between; align-items:center; padding:6px 14px; color:var(--muted); font-size:13px;}
+  .listhead .cnt{color:var(--txt); font-weight:600;}
+
+  ul.list{list-style:none; margin:0; padding:0 8px 8px; flex:1;}
+  li.row{background:var(--panel); border:1px solid var(--line); border-radius:14px; margin:8px 4px; overflow:hidden;}
+  .rowmain{display:flex; align-items:center; gap:10px; padding:10px 12px;}
+  .badge{flex:0 0 auto; min-width:46px; height:40px; padding:0 8px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-size:19px; font-weight:800; background:var(--chip);}
+  .badge.num{background:#1b2f4d; color:#79b8ff;}
+  .badge.wait{background:#3a2d07; color:#e3b341;}
+  .badge.lunch{background:#33235c; color:#c8a9ff;}
+  .time{flex:1; font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px;}
+  .rowbtn{flex:0 0 auto; width:40px; height:40px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--txt); font-size:18px;}
+  .rowbtn.ins{color:var(--accent2);}
+  .rowbtn.del{color:var(--danger);}
+
+  .editor{border-top:1px dashed var(--line); padding:12px; display:none; gap:10px; flex-wrap:wrap; align-items:center; background:var(--panel2);}
+  .editor.open{display:flex;}
+  .editor label{font-size:12px; color:var(--muted); width:100%;}
+  .editor input[type=time]{flex:1; min-width:120px; height:46px; font-size:22px; background:var(--bg); color:var(--txt);
+    border:1px solid var(--line); border-radius:10px; padding:0 10px;}
+  .editor select{height:46px; font-size:16px; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:10px; padding:0 8px;}
+  .editor .save{height:46px; padding:0 18px; border:none; border-radius:10px; background:var(--accent2); color:#fff; font-size:16px; font-weight:700;}
+
+  .empty{color:var(--muted); text-align:center; padding:30px 16px; font-size:14px; line-height:1.7;}
+
+  footer{position:sticky; bottom:0; background:var(--bg); border-top:1px solid var(--line); padding:10px 12px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:8px;}
+  footer button{flex:1; height:48px; border-radius:12px; border:1px solid var(--line); background:var(--panel); color:var(--txt); font-size:15px; font-weight:600;}
+  footer button.share{background:var(--accent); border-color:var(--accent); color:#fff;}
+  footer button.clear{color:var(--danger);}
+
+  .toast{position:fixed; left:50%; bottom:84px; transform:translateX(-50%) translateY(20px); background:#fff; color:#111;
+    padding:10px 18px; border-radius:24px; font-size:14px; font-weight:600; opacity:0; pointer-events:none; transition:.25s; z-index:50; box-shadow:0 6px 20px rgba(0,0,0,.4);}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  .modal{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:40; padding:20px;}
+  .modal.open{display:flex;}
+  .sheet{background:var(--panel); border:1px solid var(--line); border-radius:16px; width:100%; max-width:520px; max-height:80vh; display:flex; flex-direction:column;}
+  .sheet h3{margin:0; padding:14px 16px; border-bottom:1px solid var(--line); font-size:16px;}
+  .sheet textarea{flex:1; margin:12px; background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:10px;
+    font-size:15px; font-variant-numeric:tabular-nums; padding:10px; min-height:220px; resize:none;}
+  .sheet .acts{display:flex; gap:8px; padding:0 12px 14px;}
+  .sheet .acts button{flex:1; height:46px; border-radius:10px; border:1px solid var(--line); background:var(--panel2); color:var(--txt); font-size:15px; font-weight:600;}
+  .sheet .acts button.primary{background:var(--accent2); border-color:var(--accent2); color:#fff;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="datebar">
+      <button class="nav" id="prevDay" aria-label="前の日">&lsaquo;</button>
+      <div class="dlabel" id="dateLabel"><span id="dateMain">&mdash;</span><small id="dateSub"></small></div>
+      <button class="nav" id="nextDay" aria-label="次の日">&rsaquo;</button>
+    </div>
+    <button class="todaybtn" id="todayBtn">今日へ戻る</button>
+  </header>
+
+  <div class="buttons">
+    <button class="bigbtn rec" id="recBtn">記録</button>
+    <div class="subrow">
+      <button class="bigbtn wait" id="waitBtn">待機</button>
+      <button class="bigbtn lunch" id="lunchBtn">昼休憩</button>
+    </div>
+  </div>
+
+  <div class="listhead">
+    <span>記録一覧</span>
+    <span class="cnt" id="countLabel">0件</span>
+  </div>
+
+  <ul class="list" id="list"></ul>
+
+  <footer>
+    <button id="copyBtn">コピー</button>
+    <button class="share" id="shareBtn">共有</button>
+    <button class="clear" id="clearBtn">全削除</button>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal" id="exportModal">
+  <div class="sheet">
+    <h3 id="exportTitle">テキスト</h3>
+    <textarea id="exportText" readonly></textarea>
+    <div class="acts">
+      <button id="exportClose">閉じる</button>
+      <button class="primary" id="exportCopy">この内容をコピー</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function(){
+  const STORE_KEY = "tap_log_v1";
+  const TYPE = { COUNT:"count", WAIT:"wait", LUNCH:"lunch" };
+  const LABEL = { wait:"待機", lunch:"昼休憩" };
+
+  // ---- state ----
+  let db = load();            // { "YYYY-MM-DD": [ {id,type,time} ] }
+  let viewDate = todayKey();  // 表示中の日付
+  let openEditorId = null;    // 編集中の行id
+
+  function load(){
+    try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+    catch(e){ return {}; }
+  }
+  function save(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(db)); }
+    catch(e){ toast("保存に失敗しました"); }
+  }
+
+  function pad(n){ return String(n).padStart(2,"0"); }
+  function todayKey(){ const d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+  function nowHM(){ const d=new Date(); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+  function entriesOf(key){ if(!db[key]) db[key]=[]; return db[key]; }
+
+  // 時刻順(HH:MM)で安定ソート。同時刻は元の順序を維持。
+  function timeToMin(t){ const m=/^(\d{1,2}):(\d{2})$/.exec(t||""); return m? (+m[1])*60+(+m[2]) : 0; }
+  function sortByTime(arr){
+    return arr.map((e,i)=>[e,i])
+      .sort((a,b)=> (timeToMin(a[0].time)-timeToMin(b[0].time)) || (a[1]-b[1]))
+      .map(p=>p[0]);
+  }
+
+  // ---- 操作 ----
+  function addEntry(type){
+    const arr = entriesOf(viewDate);
+    arr.push({ id:uid(), type:type, time:nowHM() });
+    db[viewDate] = sortByTime(arr);
+    save(); render();
+    toast(type===TYPE.COUNT ? "記録しました" : LABEL[type]+"を記録");
+  }
+
+  function insertAfter(id){
+    const arr = entriesOf(viewDate);
+    const idx = arr.findIndex(e=>e.id===id);
+    if(idx<0) return;
+    // 挿入時刻の初期値：前後の中間
+    const cur = timeToMin(arr[idx].time);
+    const nextT = (idx+1<arr.length) ? timeToMin(arr[idx+1].time) : cur+10;
+    const mid = Math.round((cur+nextT)/2);
+    const t = pad(Math.floor(mid/60)%24)+":"+pad(mid%60);
+    const ne = { id:uid(), type:TYPE.COUNT, time:t };
+    arr.splice(idx+1,0,ne);
+    db[viewDate]=arr;            // 挿入位置を保持(自動ソートしない)
+    openEditorId = ne.id;
+    save(); render();           // すぐ編集を開く
+  }
+
+  function deleteEntry(id){
+    const arr = entriesOf(viewDate);
+    db[viewDate] = arr.filter(e=>e.id!==id);
+    if(openEditorId===id) openEditorId=null;
+    save(); render();
+  }
+
+  function updateEntry(id, time, type){
+    const arr = entriesOf(viewDate);
+    const e = arr.find(x=>x.id===id);
+    if(!e) return;
+    e.time = time; e.type = type;
+    db[viewDate] = sortByTime(arr);
+    openEditorId=null;
+    save(); render();
+  }
+
+  function clearDay(){
+    if(!confirm(formatDate(viewDate)+" の記録をすべて削除しますか?")) return;
+    delete db[viewDate];
+    save(); render();
+  }
+
+  // ---- 採番(count型のみ、配列順に1から) ----
+  function numbersFor(arr){
+    const map={}; let n=0;
+    arr.forEach(e=>{ if(e.type===TYPE.COUNT){ n++; map[e.id]=n; } });
+    return map;
+  }
+
+  // ---- 出力テキスト ----
+  function buildText(key){
+    const arr = entriesOf(key);
+    const nums = numbersFor(arr);
+    const lines = arr.map(e=>{
+      const head = e.type===TYPE.COUNT ? String(nums[e.id]) : LABEL[e.type];
+      return head + "\t" + e.time;
+    });
+    return lines.join("\n");
+  }
+
+  // ---- 日付 ----
+  function shiftDate(key, days){
+    const [y,m,d]=key.split("-").map(Number);
+    const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+days);
+    return dt.getFullYear()+"-"+pad(dt.getMonth()+1)+"-"+pad(dt.getDate());
+  }
+  function formatDate(key){
+    const [y,m,d]=key.split("-").map(Number);
+    const dt=new Date(y,m-1,d);
+    const w=["日","月","火","水","木","金","土"][dt.getDay()];
+    return y+"年"+m+"月"+d+"日("+w+")";
+  }
+
+  // ---- 描画 ----
+  function render(){
+    document.getElementById("dateMain").textContent = formatDate(viewDate);
+    document.getElementById("dateSub").textContent = (viewDate===todayKey()) ? "今日" : "";
+    document.getElementById("todayBtn").style.display = (viewDate===todayKey()) ? "none" : "block";
+
+    const arr = entriesOf(viewDate);
+    const nums = numbersFor(arr);
+    const numCount = arr.filter(e=>e.type===TYPE.COUNT).length;
+    document.getElementById("countLabel").textContent = "番号 "+numCount+" / 全"+arr.length+"件";
+
+    const list = document.getElementById("list");
+    list.innerHTML="";
+
+    if(arr.length===0){
+      const li=document.createElement("li");
+      li.className="empty";
+      li.innerHTML="まだ記録がありません。<br>「記録」ボタンを押すと番号と時刻が追加されます。";
+      list.appendChild(li);
+      return;
+    }
+
+    arr.forEach(e=>{
+      const li=document.createElement("li"); li.className="row";
+
+      const main=document.createElement("div"); main.className="rowmain";
+      const badge=document.createElement("div");
+      if(e.type===TYPE.COUNT){ badge.className="badge num"; badge.textContent=nums[e.id]; }
+      else { badge.className="badge "+e.type; badge.textContent=LABEL[e.type]; }
+      const time=document.createElement("div"); time.className="time"; time.textContent=e.time;
+      time.addEventListener("click",()=>{ openEditorId=(openEditorId===e.id)?null:e.id; render(); });
+
+      const insBtn=document.createElement("button"); insBtn.className="rowbtn ins"; insBtn.textContent="＋"; insBtn.title="下に挿入";
+      insBtn.addEventListener("click",()=>insertAfter(e.id));
+      const editBtn=document.createElement("button"); editBtn.className="rowbtn"; editBtn.textContent="✎";
+      editBtn.addEventListener("click",()=>{ openEditorId=(openEditorId===e.id)?null:e.id; render(); });
+      const delBtn=document.createElement("button"); delBtn.className="rowbtn del"; delBtn.textContent="✕";
+      delBtn.addEventListener("click",()=>{ if(confirm("この行を削除しますか?")) deleteEntry(e.id); });
+
+      main.appendChild(badge); main.appendChild(time);
+      main.appendChild(insBtn); main.appendChild(editBtn); main.appendChild(delBtn);
+      li.appendChild(main);
+
+      // editor
+      const ed=document.createElement("div"); ed.className="editor"+(openEditorId===e.id?" open":"");
+      const lab=document.createElement("label"); lab.textContent="時刻と種別を修正（手入力）";
+      const tin=document.createElement("input"); tin.type="time"; tin.value=e.time;
+      const sel=document.createElement("select");
+      [["count","番号"],["wait","待機"],["lunch","昼休憩"]].forEach(function(pair){
+        const o=document.createElement("option"); o.value=pair[0]; o.textContent=pair[1]; if(pair[0]===e.type)o.selected=true; sel.appendChild(o);
+      });
+      const sv=document.createElement("button"); sv.className="save"; sv.textContent="保存";
+      sv.addEventListener("click",()=>{
+        if(!/^\d{1,2}:\d{2}$/.test(tin.value)){ toast("時刻を入力してください"); return; }
+        updateEntry(e.id, tin.value, sel.value);
+        toast("修正しました");
+      });
+      ed.appendChild(lab); ed.appendChild(tin); ed.appendChild(sel); ed.appendChild(sv);
+      li.appendChild(ed);
+
+      list.appendChild(li);
+    });
+  }
+
+  // ---- コピー / 共有 ----
+  async function copyText(text){
+    try{
+      if(navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText(text); toast("コピーしました"); return true;
+      }
+    }catch(e){}
+    // フォールバック
+    try{
+      const ta=document.createElement("textarea"); ta.value=text;
+      ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta);
+      ta.focus(); ta.select(); const ok=document.execCommand("copy"); document.body.removeChild(ta);
+      if(ok){ toast("コピーしました"); return true; }
+    }catch(e){}
+    return false;
+  }
+
+  async function doCopy(){
+    const text=buildText(viewDate);
+    if(!text){ toast("記録がありません"); return; }
+    const ok=await copyText(text);
+    if(!ok) showExportModal("コピー用テキスト", text);
+  }
+
+  async function doShare(){
+    const text=buildText(viewDate);
+    if(!text){ toast("記録がありません"); return; }
+    const title=formatDate(viewDate)+" タップ記録";
+    if(navigator.share){
+      try{ await navigator.share({ title:title, text:title+"\n"+text }); return; }
+      catch(e){ if(e && e.name==="AbortError") return; }
+    }
+    // 共有非対応時：コピー＋テキスト表示
+    const ok=await copyText(text);
+    showExportModal("共有テキスト（コピー済み）", text);
+    if(!ok) toast("テキストを選択してコピーしてください");
+  }
+
+  function showExportModal(title, text){
+    document.getElementById("exportTitle").textContent=title;
+    document.getElementById("exportText").value=text;
+    document.getElementById("exportModal").classList.add("open");
+  }
+
+  // ---- toast ----
+  let toastTimer=null;
+  function toast(msg){
+    const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"),1600);
+  }
+
+  // ---- events ----
+  document.getElementById("recBtn").addEventListener("click",()=>addEntry(TYPE.COUNT));
+  document.getElementById("waitBtn").addEventListener("click",()=>addEntry(TYPE.WAIT));
+  document.getElementById("lunchBtn").addEventListener("click",()=>addEntry(TYPE.LUNCH));
+  document.getElementById("prevDay").addEventListener("click",()=>{ viewDate=shiftDate(viewDate,-1); openEditorId=null; render(); });
+  document.getElementById("nextDay").addEventListener("click",()=>{ viewDate=shiftDate(viewDate,1); openEditorId=null; render(); });
+  document.getElementById("todayBtn").addEventListener("click",()=>{ viewDate=todayKey(); openEditorId=null; render(); });
+  document.getElementById("copyBtn").addEventListener("click",doCopy);
+  document.getElementById("shareBtn").addEventListener("click",doShare);
+  document.getElementById("clearBtn").addEventListener("click",clearDay);
+  document.getElementById("exportClose").addEventListener("click",()=>document.getElementById("exportModal").classList.remove("open"));
+  document.getElementById("exportCopy").addEventListener("click",async()=>{
+    await copyText(document.getElementById("exportText").value);
+  });
+  document.getElementById("exportModal").addEventListener("click",(ev)=>{
+    if(ev.target.id==="exportModal") document.getElementById("exportModal").classList.remove("open");
+  });
+
+  // 初期化
+  render();
+})();
+</script>
+</body>
+</html>
