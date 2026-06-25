@@ -93,7 +93,9 @@
   footer button.share{background:var(--accent); border-color:var(--accent); color:#fff;}
   footer button.clear{color:var(--danger);}
 
-  /* 横向き：左に操作・右にリストの2分割 */
+  .handbtn{font-size:18px;}
+
+  /* 横向き：操作とリストの2分割（既定は操作=左） */
   @media (orientation: landscape){
     .body{flex-direction:row;}
     .controls{flex:0 0 40%; max-width:340px; justify-content:center;
@@ -102,6 +104,9 @@
     .subrow .bigbtn{height:64px;}
     .listwrap{flex:1 1 auto;}
     .listhead{border-top:none;}
+    /* 逆バージョン：操作=右・リスト=左 */
+    .app.hand-right .body{flex-direction:row-reverse;}
+    .app.hand-right .controls{border-right:none; border-left:1px solid var(--line);}
   }
 
   .toast{position:fixed; left:50%; bottom:80px; transform:translateX(-50%) translateY(20px); background:#fff; color:#111;
@@ -126,6 +131,7 @@
       <button class="nav" id="prevDay" aria-label="前の日">&lsaquo;</button>
       <div class="dlabel"><span id="dateMain">&mdash;</span><small id="dateSub"></small></div>
       <button class="nav" id="nextDay" aria-label="次の日">&rsaquo;</button>
+      <button class="nav handbtn" id="handBtn" aria-label="横向き時の操作位置を左右切替" title="横向き時の操作位置を左右切替">⇄</button>
     </div>
     <button class="todaybtn" id="todayBtn">今日へ戻る</button>
   </header>
@@ -180,6 +186,7 @@
   let openEditorId = null;
   let pendingScroll = true;   // render後に最下部へスクロールするか
   let boingId = null;         // 直近に追加した行（出現アニメ対象）
+  let hand = (function(){ try{ return localStorage.getItem("tap_hand")==="right"?"right":"left"; }catch(e){ return "left"; } })(); // 横向き操作位置
 
   function load(){
     try{ return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
@@ -410,10 +417,22 @@
   document.getElementById("exportModal").addEventListener("click",(ev)=>{
     if(ev.target.id==="exportModal") document.getElementById("exportModal").classList.remove("open");
   });
+  // 横向き時の操作位置（利き手）の左右切替
+  function applyHand(){
+    document.querySelector(".app").classList.toggle("hand-right", hand==="right");
+  }
+  document.getElementById("handBtn").addEventListener("click",()=>{
+    hand = (hand==="right") ? "left" : "right";
+    try{ localStorage.setItem("tap_hand", hand); }catch(e){}
+    applyHand();
+    toast("横向きの操作位置: "+(hand==="right"?"右":"左"));
+  });
+
   // 向き変更時も最新を表示し直す
   window.addEventListener("orientationchange", ()=>{ pendingScroll=true; setTimeout(render, 200); });
   window.addEventListener("resize", ()=>{ pendingScroll=true; setTimeout(render, 150); });
 
+  applyHand();
   render();
 })();
 </script>
