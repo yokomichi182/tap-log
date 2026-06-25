@@ -23,10 +23,14 @@
     padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
 
   header{flex:0 0 auto; background:var(--bg); padding:8px 12px; border-bottom:1px solid var(--line);}
-  .datebar{display:flex; align-items:center; gap:8px;}
+  .datebar{display:flex; align-items:center;}
+  /* 左右に同じ幅の領域を置き、日付を必ず中央に揃える */
+  .sidegrp{flex:0 0 92px; display:flex; align-items:center; gap:8px;}
+  .sidegrp.right{justify-content:flex-end;}
   .datebar .nav{flex:0 0 auto; width:42px; height:42px; border-radius:12px; border:1px solid var(--line);
     background:var(--panel); color:var(--txt); font-size:22px; line-height:1;}
-  .datebar .dlabel{flex:1; text-align:center; font-size:15px; font-weight:600;}
+  .datebar .nav:disabled{opacity:.3;}
+  .datebar .dlabel{flex:1; min-width:0; text-align:center; font-size:15px; font-weight:600;}
   .datebar .dlabel small{color:var(--muted); font-weight:400; font-size:12px; margin-left:6px;}
   .todaybtn{margin-top:6px; width:100%; height:30px; border-radius:9px; border:1px solid var(--line);
     background:var(--panel); color:var(--muted); font-size:12px; display:none;}
@@ -128,10 +132,14 @@
 <div class="app">
   <header>
     <div class="datebar">
-      <button class="nav" id="prevDay" aria-label="前の日">&lsaquo;</button>
+      <div class="sidegrp">
+        <button class="nav" id="prevDay" aria-label="前の日">&lsaquo;</button>
+      </div>
       <div class="dlabel"><span id="dateMain">&mdash;</span><small id="dateSub"></small></div>
-      <button class="nav" id="nextDay" aria-label="次の日">&rsaquo;</button>
-      <button class="nav handbtn" id="handBtn" aria-label="横向き時の操作位置を左右切替" title="横向き時の操作位置を左右切替">⇄</button>
+      <div class="sidegrp right">
+        <button class="nav handbtn" id="handBtn" aria-label="横向き時の操作位置を左右切替" title="横向き時の操作位置を左右切替">⇄</button>
+        <button class="nav" id="nextDay" aria-label="次の日（今日まで）">&rsaquo;</button>
+      </div>
     </div>
     <button class="todaybtn" id="todayBtn">今日へ戻る</button>
   </header>
@@ -288,9 +296,11 @@
   }
 
   function render(){
+    const isToday = (viewDate===todayKey());
     document.getElementById("dateMain").textContent = formatDate(viewDate);
-    document.getElementById("dateSub").textContent = (viewDate===todayKey()) ? "今日" : "";
-    document.getElementById("todayBtn").style.display = (viewDate===todayKey()) ? "none" : "block";
+    document.getElementById("dateSub").textContent = isToday ? "今日" : "";
+    document.getElementById("todayBtn").style.display = isToday ? "none" : "block";
+    document.getElementById("nextDay").disabled = isToday;   // 今日より先（未来）へは進めない
 
     const arr = entriesOf(viewDate);
     const nums = numbersFor(arr);
@@ -406,6 +416,7 @@
   document.getElementById("waitBtn").addEventListener("click",(e)=>{ pop(e.currentTarget); addEntry(TYPE.WAIT); });
   document.getElementById("lunchBtn").addEventListener("click",(e)=>{ pop(e.currentTarget); addEntry(TYPE.LUNCH); });
   document.getElementById("prevDay").addEventListener("click",()=>{ viewDate=shiftDate(viewDate,-1); openEditorId=null; pendingScroll=true; render(); });
+  document.getElementById("nextDay").addEventListener("click",()=>{ if(viewDate>=todayKey()) return; viewDate=shiftDate(viewDate,1); openEditorId=null; pendingScroll=true; render(); });
   document.getElementById("todayBtn").addEventListener("click",()=>{ viewDate=todayKey(); openEditorId=null; pendingScroll=true; render(); });
   document.getElementById("copyBtn").addEventListener("click",doCopy);
   document.getElementById("shareBtn").addEventListener("click",doShare);
@@ -417,6 +428,7 @@
   document.getElementById("exportModal").addEventListener("click",(ev)=>{
     if(ev.target.id==="exportModal") document.getElementById("exportModal").classList.remove("open");
   });
+
   // 横向き時の操作位置（利き手）の左右切替
   function applyHand(){
     document.querySelector(".app").classList.toggle("hand-right", hand==="right");
